@@ -1,0 +1,1860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>SmartPark VR - Meta Quest 3S Smart Parking Simulation</title>
+    <meta name="description" content="Futuristic WebXR Smart Parking System Simulation for Meta Quest 3S and Desktop with Real-time IoT Sensors, EV Supercharging, Dynamic Guidance, and Interactive AI Management.">
+    <!-- A-Frame VR Framework -->
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #030712;
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            color: #f3f4f6;
+        }
+
+        /* 2D Desktop Overlay & HUD (Hidden during immersive VR, great for desktop testing & control) */
+        #desktop-hud {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            z-index: 999;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 380px;
+        }
+
+        .hud-glass-card {
+            background: rgba(10, 16, 30, 0.82);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 243, 255, 0.28);
+            border-radius: 12px;
+            padding: 14px 18px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), inset 0 0 12px rgba(0, 243, 255, 0.08);
+            pointer-events: auto;
+        }
+
+        .hud-title {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: #00f3ff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+        }
+
+        .hud-badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+            border: 1px solid #00ff88;
+            letter-spacing: 0.5px;
+        }
+
+        .hud-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .hud-stat-box {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 6px;
+            text-align: center;
+        }
+
+        .hud-stat-num {
+            font-size: 18px;
+            font-weight: 700;
+            font-family: monospace;
+        }
+
+        .hud-stat-lbl {
+            font-size: 9px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .hud-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .hud-btn {
+            flex: 1 1 calc(50% - 4px);
+            background: rgba(0, 243, 255, 0.12);
+            border: 1px solid #00f3ff;
+            color: #e0faff;
+            padding: 7px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .hud-btn:hover {
+            background: #00f3ff;
+            color: #030712;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.6);
+            transform: translateY(-1px);
+        }
+
+        .hud-btn.secondary {
+            background: rgba(255, 183, 0, 0.12);
+            border-color: #ffb700;
+            color: #fff4d1;
+        }
+        .hud-btn.secondary:hover {
+            background: #ffb700;
+            color: #030712;
+            box-shadow: 0 0 15px rgba(255, 183, 0, 0.6);
+        }
+
+        .hud-btn.danger {
+            background: rgba(255, 42, 95, 0.12);
+            border-color: #ff2a5f;
+            color: #ffe0e7;
+        }
+        .hud-btn.danger:hover {
+            background: #ff2a5f;
+            color: #ffffff;
+            box-shadow: 0 0 15px rgba(255, 42, 95, 0.6);
+        }
+
+        /* Controls Help Toast */
+        #controls-help {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 999;
+            background: rgba(5, 10, 20, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 12px;
+            color: #cbd5e1;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            backdrop-filter: blur(8px);
+            pointer-events: none;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .key-tag {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-weight: bold;
+            color: #00f3ff;
+        }
+
+        /* Audio enable banner for browser autoplay policy */
+        #audio-prompt {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            z-index: 1000;
+            background: rgba(16, 24, 39, 0.9);
+            border: 1px solid #00ff88;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #00ff88;
+            transition: 0.2s ease;
+        }
+        #audio-prompt:hover {
+            background: #00ff88;
+            color: #030712;
+        }
+
+        /* Mobile / VR Mode indicator */
+        .vr-indicator {
+            position: absolute;
+            top: 60px;
+            right: 16px;
+            z-index: 999;
+            font-size: 11px;
+            background: rgba(0,0,0,0.6);
+            border: 1px solid #38bdf8;
+            color: #38bdf8;
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 2D Desktop HUD -->
+    <div id="desktop-hud">
+        <div class="hud-glass-card">
+            <div class="hud-title">
+                <span>⚡ SMARTPARK IOT</span>
+                <span class="hud-badge" id="hud-mode-badge">QUEST 3S OPTIMIZED</span>
+            </div>
+            <div style="font-size: 11px; color: #94a3b8; margin-bottom: 6px;">Autonomous AI Parking Facility</div>
+            <div class="hud-stats-grid">
+                <div class="hud-stat-box">
+                    <div class="hud-stat-num" id="hud-avail-count" style="color: #00ff88;">14</div>
+                    <div class="hud-stat-lbl">Available</div>
+                </div>
+                <div class="hud-stat-box">
+                    <div class="hud-stat-num" id="hud-occ-count" style="color: #ff2a5f;">10</div>
+                    <div class="hud-stat-lbl">Occupied</div>
+                </div>
+                <div class="hud-stat-box">
+                    <div class="hud-stat-num" id="hud-ev-count" style="color: #00f3ff;">4</div>
+                    <div class="hud-stat-lbl">EV Active</div>
+                </div>
+            </div>
+            <div class="hud-actions">
+                <button class="hud-btn" id="btn-find-nearest">
+                    <span>🧭</span> Nearest Spot
+                </button>
+                <button class="hud-btn" id="btn-find-ev">
+                    <span>🔌</span> Find EV Bay
+                </button>
+                <button class="hud-btn secondary" id="btn-sim-traffic">
+                    <span id="traffic-icon">▶</span> Auto-Traffic
+                </button>
+                <button class="hud-btn" id="btn-spawn-car">
+                    <span>🚗</span> Gate Arrival
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="audio-prompt" onclick="SmartAudio.init(); this.style.display='none';">
+        <span>🔊</span> Click to Enable Audio
+    </div>
+
+    <div id="controls-help">
+        <span>🥽 <b>VR (Quest 3S):</b> Left Stick: Move | Right Stick: Turn | Trigger: Point & Select</span>
+        <span>💻 <b>Desktop:</b> <span class="key-tag">W A S D</span> Move | <span class="key-tag">Mouse</span> Look & Click</span>
+    </div>
+
+    <!-- Procedural Texture Canvas Generator (Generates crisp textures in-memory without external images) -->
+    <script>
+        const TextureGen = {
+            // Generates asphalt road marking textures
+            createAsphaltCanvas() {
+                const c = document.createElement('canvas');
+                c.width = 512;
+                c.height = 512;
+                const ctx = c.getContext('2d');
+                ctx.fillStyle = '#141820';
+                ctx.fillRect(0, 0, 512, 512);
+                
+                // Subtle asphalt noise
+                for (let i = 0; i < 4000; i++) {
+                    const x = Math.random() * 512;
+                    const y = Math.random() * 512;
+                    const b = Math.floor(Math.random() * 30);
+                    ctx.fillStyle = `rgba(${25 + b}, ${30 + b}, ${40 + b}, 0.6)`;
+                    ctx.fillRect(x, y, 2, 2);
+                }
+                // Grid lines / expansion joints
+                ctx.strokeStyle = 'rgba(30, 41, 59, 0.8)';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(0, 0, 512, 512);
+                return c.toDataURL();
+            },
+            createArrowCanvas() {
+                const c = document.createElement('canvas');
+                c.width = 256;
+                c.height = 256;
+                const ctx = c.getContext('2d');
+                ctx.clearRect(0, 0, 256, 256);
+                ctx.fillStyle = '#00f3ff';
+                ctx.shadowColor = '#00f3ff';
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.moveTo(128, 30);
+                ctx.lineTo(210, 120);
+                ctx.lineTo(160, 120);
+                ctx.lineTo(160, 226);
+                ctx.lineTo(96, 226);
+                ctx.lineTo(96, 120);
+                ctx.lineTo(46, 120);
+                ctx.closePath();
+                ctx.fill();
+                return c.toDataURL();
+            },
+            createEVLogoCanvas() {
+                const c = document.createElement('canvas');
+                c.width = 256;
+                c.height = 256;
+                const ctx = c.getContext('2d');
+                ctx.fillStyle = 'rgba(0, 243, 255, 0.15)';
+                ctx.strokeStyle = '#00f3ff';
+                ctx.lineWidth = 8;
+                ctx.beginPath();
+                ctx.arc(128, 128, 110, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.fill();
+
+                // Lightning bolt
+                ctx.fillStyle = '#00f3ff';
+                ctx.shadowColor = '#00f3ff';
+                ctx.shadowBlur = 15;
+                ctx.beginPath();
+                ctx.moveTo(145, 40);
+                ctx.lineTo(75, 135);
+                ctx.lineTo(125, 135);
+                ctx.lineTo(105, 215);
+                ctx.lineTo(185, 115);
+                ctx.lineTo(135, 115);
+                ctx.closePath();
+                ctx.fill();
+                return c.toDataURL();
+            },
+            createAccessibleLogoCanvas() {
+                const c = document.createElement('canvas');
+                c.width = 256;
+                c.height = 256;
+                const ctx = c.getContext('2d');
+                ctx.fillStyle = 'rgba(0, 128, 255, 0.18)';
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 8;
+                ctx.beginPath();
+                ctx.arc(128, 128, 110, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.fill();
+
+                // Wheelchair symbol
+                ctx.fillStyle = '#38bdf8';
+                ctx.shadowColor = '#38bdf8';
+                ctx.shadowBlur = 12;
+                // Head
+                ctx.beginPath();
+                ctx.arc(130, 75, 16, 0, Math.PI * 2);
+                ctx.fill();
+                // Wheel arc
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 14;
+                ctx.beginPath();
+                ctx.arc(120, 145, 38, Math.PI * 0.4, Math.PI * 1.8);
+                ctx.stroke();
+                // Body line
+                ctx.beginPath();
+                ctx.moveTo(130, 95);
+                ctx.lineTo(130, 140);
+                ctx.lineTo(165, 140);
+                ctx.lineTo(165, 185);
+                ctx.stroke();
+                return c.toDataURL();
+            }
+        };
+
+        // Synthesized Procedural Audio Engine (Zero external audio files needed!)
+        const SmartAudio = {
+            ctx: null,
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) this.ctx = new AudioCtx();
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            },
+            beep(freq = 440, type = 'sine', duration = 0.1, gainVal = 0.1) {
+                if (!this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e){}
+            },
+            playSelect() {
+                this.beep(880, 'sine', 0.08, 0.08);
+                setTimeout(() => this.beep(1320, 'sine', 0.12, 0.06), 60);
+            },
+            playSuccess() {
+                this.beep(523.25, 'triangle', 0.1, 0.1);
+                setTimeout(() => this.beep(659.25, 'triangle', 0.1, 0.1), 80);
+                setTimeout(() => this.beep(783.99, 'triangle', 0.2, 0.12), 160);
+                setTimeout(() => this.beep(1046.50, 'triangle', 0.3, 0.14), 240);
+            },
+            playGate() {
+                this.beep(300, 'sawtooth', 0.3, 0.05);
+                setTimeout(() => this.beep(450, 'sine', 0.25, 0.08), 150);
+            },
+            playCharge() {
+                this.beep(220, 'sine', 0.4, 0.05);
+                setTimeout(() => this.beep(440, 'triangle', 0.3, 0.08), 100);
+                setTimeout(() => this.beep(880, 'sine', 0.2, 0.05), 250);
+            },
+            playAlert() {
+                this.beep(350, 'sawtooth', 0.15, 0.15);
+                setTimeout(() => this.beep(300, 'sawtooth', 0.2, 0.15), 160);
+            }
+        };
+
+        // Attach user interaction listener to wake audio
+        window.addEventListener('click', () => SmartAudio.init(), { once: true });
+        window.addEventListener('touchstart', () => SmartAudio.init(), { once: true });
+    </script>
+
+    <!-- Parking Database and Global State Manager -->
+    <script>
+        const ParkingData = {
+            // Configuration and spaces definition
+            spaces: [
+                // Zone A (North - 8 standard spaces)
+                { id: 'A01', zone: 'A', type: 'standard', status: 'occupied', x: -14, z: -8, rot: 0, vehicleType: 'sedan', vehicleColor: '#38bdf8' },
+                { id: 'A02', zone: 'A', type: 'standard', status: 'available', x: -10, z: -8, rot: 0 },
+                { id: 'A03', zone: 'A', type: 'standard', status: 'occupied', x: -6, z: -8, rot: 0, vehicleType: 'suv', vehicleColor: '#ef4444' },
+                { id: 'A04', zone: 'A', type: 'standard', status: 'available', x: -2, z: -8, rot: 0 },
+                { id: 'A05', zone: 'A', type: 'standard', status: 'occupied', x: 2, z: -8, rot: 0, vehicleType: 'compact', vehicleColor: '#f59e0b' },
+                { id: 'A06', zone: 'A', type: 'standard', status: 'available', x: 6, z: -8, rot: 0 },
+                { id: 'A07', zone: 'A', type: 'standard', status: 'occupied', x: 10, z: -8, rot: 0, vehicleType: 'sedan', vehicleColor: '#e2e8f0' },
+                { id: 'A08', zone: 'A', type: 'standard', status: 'available', x: 14, z: -8, rot: 0 },
+
+                // Zone B (Center - 8 spaces: 6 Standard + 2 Accessible)
+                { id: 'B01', zone: 'B', type: 'standard', status: 'occupied', x: -14, z: 2, rot: 180, vehicleType: 'suv', vehicleColor: '#10b981' },
+                { id: 'B02', zone: 'B', type: 'standard', status: 'available', x: -10, z: 2, rot: 180 },
+                { id: 'B03', zone: 'B', type: 'standard', status: 'available', x: -6, z: 2, rot: 180 },
+                { id: 'B04', zone: 'B', type: 'standard', status: 'occupied', x: -2, z: 2, rot: 180, vehicleType: 'sedan', vehicleColor: '#6366f1' },
+                { id: 'B05', zone: 'B', type: 'standard', status: 'available', x: 2, z: 2, rot: 180 },
+                { id: 'B06', zone: 'B', type: 'standard', status: 'occupied', x: 6, z: 2, rot: 180, vehicleType: 'compact', vehicleColor: '#ec4899' },
+                { id: 'ACC01', zone: 'B', type: 'accessible', status: 'available', x: 10, z: 2, rot: 180 },
+                { id: 'ACC02', zone: 'B', type: 'accessible', status: 'occupied', x: 14, z: 2, rot: 180, vehicleType: 'van', vehicleColor: '#0ea5e9' },
+
+                // Zone C (South - 6 Standard + 2 Reserved)
+                { id: 'C01', zone: 'C', type: 'standard', status: 'available', x: -14, z: 12, rot: 0 },
+                { id: 'C02', zone: 'C', type: 'standard', status: 'occupied', x: -10, z: 12, rot: 0, vehicleType: 'sedan', vehicleColor: '#8b5cf6' },
+                { id: 'C03', zone: 'C', type: 'standard', status: 'available', x: -6, z: 12, rot: 0 },
+                { id: 'C04', zone: 'C', type: 'standard', status: 'available', x: -2, z: 12, rot: 0 },
+                { id: 'C05', zone: 'C', type: 'standard', status: 'occupied', x: 2, z: 12, rot: 0, vehicleType: 'suv', vehicleColor: '#64748b' },
+                { id: 'C06', zone: 'C', type: 'standard', status: 'available', x: 6, z: 12, rot: 0 },
+                { id: 'RES01', zone: 'C', type: 'reserved', status: 'reserved', x: 10, z: 12, rot: 0 },
+                { id: 'RES02', zone: 'C', type: 'reserved', status: 'available', x: 14, z: 12, rot: 0 },
+
+                // Zone EV (East Wing - 4 Dedicated High-Power Fast EV Chargers)
+                { id: 'EV01', zone: 'EV', type: 'ev', status: 'occupied', x: 22, z: -6, rot: -90, vehicleType: 'ev_coupe', vehicleColor: '#00f3ff', power: 150, batterySoc: 74, isCharging: true },
+                { id: 'EV02', zone: 'EV', type: 'ev', status: 'available', x: 22, z: -1, rot: -90, power: 150, batterySoc: 0, isCharging: false },
+                { id: 'EV03', zone: 'EV', type: 'ev', status: 'occupied', x: 22, z: 4, rot: -90, vehicleType: 'ev_coupe', vehicleColor: '#ffffff', power: 250, batterySoc: 91, isCharging: true },
+                { id: 'EV04', zone: 'EV', type: 'ev', status: 'available', x: 22, z: 9, rot: -90, power: 350, batterySoc: 0, isCharging: false }
+            ],
+
+            activeTargetSpaceId: null,
+            trafficSimRunning: false,
+            simInterval: null,
+
+            getStats() {
+                const total = this.spaces.length;
+                let available = 0;
+                let occupied = 0;
+                let reserved = 0;
+                let accessible = 0;
+                let evTotal = 0;
+                let evCharging = 0;
+
+                this.spaces.forEach(s => {
+                    if (s.status === 'available') available++;
+                    if (s.status === 'occupied') occupied++;
+                    if (s.status === 'reserved') reserved++;
+                    if (s.type === 'accessible') accessible++;
+                    if (s.type === 'ev') {
+                        evTotal++;
+                        if (s.status === 'occupied' && s.isCharging) evCharging++;
+                    }
+                });
+
+                const occupancyPct = Math.round((occupied / total) * 100);
+                return { total, available, occupied, reserved, accessible, evTotal, evCharging, occupancyPct };
+            },
+
+            getSpace(id) {
+                return this.spaces.find(s => s.id === id);
+            },
+
+            setSpaceStatus(id, newStatus, vehicleMeta = {}) {
+                const space = this.getSpace(id);
+                if (!space) return;
+
+                space.status = newStatus;
+                if (newStatus === 'occupied') {
+                    space.vehicleType = vehicleMeta.vehicleType || 'sedan';
+                    space.vehicleColor = vehicleMeta.vehicleColor || '#38bdf8';
+                    if (space.type === 'ev') {
+                        space.isCharging = true;
+                        space.batterySoc = vehicleMeta.batterySoc || Math.floor(Math.random() * 40 + 30);
+                    }
+                } else if (newStatus === 'available') {
+                    space.vehicleType = null;
+                    space.vehicleColor = null;
+                    if (space.type === 'ev') {
+                        space.isCharging = false;
+                        space.batterySoc = 0;
+                    }
+                }
+
+                // Fire event for A-Frame components & UI
+                window.dispatchEvent(new CustomEvent('smartpark-space-changed', { detail: { space } }));
+                this.updateAllUI();
+            },
+
+            toggleReserve(id) {
+                const space = this.getSpace(id);
+                if (!space) return;
+                if (space.status === 'available') {
+                    this.setSpaceStatus(id, 'reserved');
+                    SmartAudio.playSuccess();
+                } else if (space.status === 'reserved') {
+                    this.setSpaceStatus(id, 'available');
+                    SmartAudio.playSelect();
+                } else {
+                    SmartAudio.playAlert();
+                }
+            },
+
+            toggleOccupancy(id) {
+                const space = this.getSpace(id);
+                if (!space) return;
+                if (space.status === 'occupied') {
+                    this.setSpaceStatus(id, 'available');
+                    SmartAudio.playSelect();
+                } else {
+                    const colors = ['#38bdf8', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#ffffff'];
+                    const types = ['sedan', 'suv', 'compact'];
+                    const randColor = colors[Math.floor(Math.random() * colors.length)];
+                    const randType = space.type === 'ev' ? 'ev_coupe' : types[Math.floor(Math.random() * types.length)];
+                    this.setSpaceStatus(id, 'occupied', { vehicleType: randType, vehicleColor: randColor });
+                    SmartAudio.playGate();
+                }
+            },
+
+            findNearestAvailable(preferEV = false, preferAcc = false) {
+                let pool = this.spaces.filter(s => s.status === 'available');
+                if (preferEV) {
+                    const evPool = pool.filter(s => s.type === 'ev');
+                    if (evPool.length > 0) pool = evPool;
+                } else if (preferAcc) {
+                    const accPool = pool.filter(s => s.type === 'accessible');
+                    if (accPool.length > 0) pool = accPool;
+                }
+
+                if (pool.length === 0) {
+                    SmartAudio.playAlert();
+                    return null;
+                }
+
+                // Measure distance from entrance / player (default entrance at 0, 0, -22)
+                const playerEl = document.querySelector('#player-rig');
+                let px = 0, pz = -20;
+                if (playerEl) {
+                    const pos = playerEl.getAttribute('position');
+                    if (pos) { px = pos.x; pz = pos.z; }
+                }
+
+                pool.sort((a, b) => {
+                    const distA = Math.hypot(a.x - px, a.z - pz);
+                    const distB = Math.hypot(b.x - px, b.z - pz);
+                    return distA - distB;
+                });
+
+                const best = pool[0];
+                this.setNavigationTarget(best.id);
+                SmartAudio.playSuccess();
+                return best;
+            },
+
+            setNavigationTarget(id) {
+                this.activeTargetSpaceId = id;
+                window.dispatchEvent(new CustomEvent('smartpark-nav-target', { detail: { targetId: id } }));
+                this.updateAllUI();
+            },
+
+            clearNavigation() {
+                this.activeTargetSpaceId = null;
+                window.dispatchEvent(new CustomEvent('smartpark-nav-target', { detail: { targetId: null } }));
+                this.updateAllUI();
+            },
+
+            updateAllUI() {
+                const stats = this.getStats();
+                
+                // Update 2D Desktop HUD
+                const availEl = document.getElementById('hud-avail-count');
+                const occEl = document.getElementById('hud-occ-count');
+                const evEl = document.getElementById('hud-ev-count');
+                if (availEl) availEl.textContent = stats.available;
+                if (occEl) occEl.textContent = stats.occupied;
+                if (evEl) evEl.textContent = stats.evCharging;
+
+                // Fire event for 3D In-World Dashboard
+                window.dispatchEvent(new CustomEvent('smartpark-stats-updated', { detail: { stats } }));
+            },
+
+            toggleTrafficSimulation() {
+                this.trafficSimRunning = !this.trafficSimRunning;
+                const icon = document.getElementById('traffic-icon');
+                if (icon) icon.textContent = this.trafficSimRunning ? '⏸' : '▶';
+
+                if (this.trafficSimRunning) {
+                    SmartAudio.playSuccess();
+                    this.simInterval = setInterval(() => this.runSimStep(), 3500);
+                } else {
+                    SmartAudio.playSelect();
+                    clearInterval(this.simInterval);
+                }
+            },
+
+            runSimStep() {
+                // Periodic realistic parking dynamics
+                const action = Math.random() > 0.45 ? 'arrive' : 'depart';
+                if (action === 'arrive') {
+                    const avail = this.spaces.filter(s => s.status === 'available');
+                    if (avail.length > 0) {
+                        const target = avail[Math.floor(Math.random() * avail.length)];
+                        this.toggleOccupancy(target.id);
+                    }
+                } else {
+                    const occ = this.spaces.filter(s => s.status === 'occupied');
+                    if (occ.length > 2) { // keep some cars
+                        const target = occ[Math.floor(Math.random() * occ.length)];
+                        this.toggleOccupancy(target.id);
+                    }
+                }
+            }
+        };
+    </script>
+
+    <!-- A-Frame Custom VR & IoT Components -->
+    <script>
+        // Quest 3S Thumbstick Movement + Smooth / Snap Turning Component
+        AFRAME.registerComponent('quest-controller-movement', {
+            schema: {
+                speed: { type: 'number', default: 0.12 },
+                snapAngle: { type: 'number', default: 45 },
+                smoothTurn: { type: 'boolean', default: false },
+                turnSpeed: { type: 'number', default: 2.0 }
+            },
+            init() {
+                this.rig = this.el;
+                this.camera = this.rig.querySelector('a-camera') || this.rig.querySelector('[camera]');
+                this.leftController = null;
+                this.rightController = null;
+                this.canSnap = true;
+
+                this.onAxisMove = this.onAxisMove.bind(this);
+                this.onRightAxisMove = this.onRightAxisMove.bind(this);
+
+                // Find controllers
+                this.el.addEventListener('controllerconnected', (e) => {
+                    const handedness = e.detail.data.handedness;
+                    if (handedness === 'left') {
+                        this.leftController = e.target;
+                        this.leftController.addEventListener('axismove', this.onAxisMove);
+                    } else if (handedness === 'right') {
+                        this.rightController = e.target;
+                        this.rightController.addEventListener('axismove', this.onRightAxisMove);
+                    }
+                });
+            },
+            onAxisMove(e) {
+                this.leftAxis = e.detail.axis; // [x, y]
+            },
+            onRightAxisMove(e) {
+                const axis = e.detail.axis;
+                if (!axis) return;
+                const turnVal = axis[2] !== undefined ? axis[2] : axis[0]; // some mappings use axis[2] for stick
+
+                if (!this.data.smoothTurn) {
+                    if (Math.abs(turnVal) > 0.65) {
+                        if (this.canSnap) {
+                            const dir = turnVal > 0 ? -1 : 1;
+                            const rot = this.rig.getAttribute('rotation') || { x: 0, y: 0, z: 0 };
+                            this.rig.setAttribute('rotation', {
+                                x: rot.x,
+                                y: rot.y + (dir * this.data.snapAngle),
+                                z: rot.z
+                            });
+                            SmartAudio.beep(600, 'sine', 0.03, 0.03);
+                            this.canSnap = false;
+                        }
+                    } else if (Math.abs(turnVal) < 0.2) {
+                        this.canSnap = true;
+                    }
+                }
+            },
+            tick(time, delta) {
+                if (!this.camera) return;
+                const dt = delta / 1000;
+
+                // Handle Left Stick Locomotion
+                if (this.leftAxis && (Math.abs(this.leftAxis[0]) > 0.1 || Math.abs(this.leftAxis[1]) > 0.1)) {
+                    const camRot = this.camera.getAttribute('rotation');
+                    const rigRot = this.rig.getAttribute('rotation') || { y: 0 };
+                    const totalYaw = ((camRot.y + rigRot.y) * Math.PI) / 180;
+
+                    const stickX = this.leftAxis[0];
+                    const stickZ = this.leftAxis[1]; // Forward/back
+
+                    // Movement relative to head look direction
+                    const moveSpeed = this.data.speed * (dt * 60);
+                    const dx = (stickX * Math.cos(totalYaw) + stickZ * Math.sin(totalYaw)) * moveSpeed;
+                    const dz = (-stickX * Math.sin(totalYaw) + stickZ * Math.cos(totalYaw)) * moveSpeed;
+
+                    const curPos = this.rig.getAttribute('position');
+                    this.rig.setAttribute('position', {
+                        x: curPos.x + dx,
+                        y: curPos.y,
+                        z: curPos.z + dz
+                    });
+                }
+            }
+        });
+
+        // Interactive Clickable / Raycastable Object with visual feedback
+        AFRAME.registerComponent('smart-interactive', {
+            schema: {
+                hoverColor: { type: 'color', default: '#00f3ff' },
+                origColor: { type: 'color', default: '' },
+                sound: { type: 'string', default: 'select' }
+            },
+            init() {
+                this.el.classList.add('raycastable');
+                this.onMouseEnter = this.onMouseEnter.bind(this);
+                this.onMouseLeave = this.onMouseLeave.bind(this);
+                this.onClick = this.onClick.bind(this);
+
+                this.el.addEventListener('mouseenter', this.onMouseEnter);
+                this.el.addEventListener('mouseleave', this.onMouseLeave);
+                this.el.addEventListener('click', this.onClick);
+            },
+            onMouseEnter() {
+                const mat = this.el.getAttribute('material');
+                if (mat) {
+                    this.data.origColor = mat.color;
+                    this.el.setAttribute('material', 'color', this.data.hoverColor);
+                    this.el.setAttribute('material', 'emissive', this.data.hoverColor);
+                    this.el.setAttribute('material', 'emissiveIntensity', '0.4');
+                }
+                SmartAudio.beep(900, 'sine', 0.02, 0.02);
+            },
+            onMouseLeave() {
+                if (this.data.origColor) {
+                    this.el.setAttribute('material', 'color', this.data.origColor);
+                    this.el.setAttribute('material', 'emissiveIntensity', '0.0');
+                }
+            },
+            onClick() {
+                if (this.data.sound === 'select') SmartAudio.playSelect();
+                else if (this.data.sound === 'success') SmartAudio.playSuccess();
+            }
+        });
+
+        // Individual Smart Parking Bay Component
+        AFRAME.registerComponent('parking-bay', {
+            schema: {
+                spaceId: { type: 'string' }
+            },
+            init() {
+                this.space = ParkingData.getSpace(this.data.spaceId);
+                if (!this.space) return;
+
+                this.createBayStructure();
+                this.updateBayVisuals();
+
+                this.onSpaceChanged = this.onSpaceChanged.bind(this);
+                this.onNavTarget = this.onNavTarget.bind(this);
+                window.addEventListener('smartpark-space-changed', this.onSpaceChanged);
+                window.addEventListener('smartpark-nav-target', this.onNavTarget);
+            },
+            createBayStructure() {
+                const s = this.space;
+                this.el.setAttribute('position', `${s.x} 0 ${s.z}`);
+                this.el.setAttribute('rotation', `0 ${s.rot} 0`);
+
+                // 1. Floor Line Marking / Pad
+                this.floorPad = document.createElement('a-plane');
+                this.floorPad.setAttribute('rotation', '-90 0 0');
+                this.floorPad.setAttribute('position', '0 0.02 0');
+                this.floorPad.setAttribute('width', '3.4');
+                this.floorPad.setAttribute('height', '5.6');
+                this.floorPad.setAttribute('material', {
+                    color: '#0f172a',
+                    roughness: 0.8,
+                    metalness: 0.2
+                });
+                this.el.appendChild(this.floorPad);
+
+                // 2. Neon / Painted Parking Border Outline
+                this.borderBox = document.createElement('a-entity');
+                // Left line
+                const leftLine = document.createElement('a-plane');
+                leftLine.setAttribute('rotation', '-90 0 0');
+                leftLine.setAttribute('position', '-1.7 0.03 0');
+                leftLine.setAttribute('width', '0.12');
+                leftLine.setAttribute('height', '5.6');
+                leftLine.setAttribute('material', 'color: #ffffff; roughness: 0.5');
+                this.borderBox.appendChild(leftLine);
+
+                // Right line
+                const rightLine = document.createElement('a-plane');
+                rightLine.setAttribute('rotation', '-90 0 0');
+                rightLine.setAttribute('position', '1.7 0.03 0');
+                rightLine.setAttribute('width', '0.12');
+                rightLine.setAttribute('height', '5.6');
+                rightLine.setAttribute('material', 'color: #ffffff; roughness: 0.5');
+                this.borderBox.appendChild(rightLine);
+
+                // Back curb stopper
+                const stopper = document.createElement('a-box');
+                stopper.setAttribute('position', '0 0.1 -2.3');
+                stopper.setAttribute('width', '2.6');
+                stopper.setAttribute('height', '0.18');
+                stopper.setAttribute('depth', '0.25');
+                stopper.setAttribute('material', 'color: #334155; roughness: 0.6');
+                this.borderBox.appendChild(stopper);
+
+                this.el.appendChild(this.borderBox);
+
+                // 3. Floor ID Text
+                this.idFloorText = document.createElement('a-text');
+                this.idFloorText.setAttribute('value', s.id);
+                this.idFloorText.setAttribute('position', '0 0.04 -1.8');
+                this.idFloorText.setAttribute('rotation', '-90 0 0');
+                this.idFloorText.setAttribute('align', 'center');
+                this.idFloorText.setAttribute('width', '6');
+                this.idFloorText.setAttribute('color', '#94a3b8');
+                this.el.appendChild(this.idFloorText);
+
+                // 4. Floor Icon Decal for Special Bays (EV / Accessible)
+                if (s.type === 'ev') {
+                    const evIcon = document.createElement('a-image');
+                    evIcon.setAttribute('src', TextureGen.createEVLogoCanvas());
+                    evIcon.setAttribute('position', '0 0.03 0.2');
+                    evIcon.setAttribute('rotation', '-90 0 0');
+                    evIcon.setAttribute('width', '1.8');
+                    evIcon.setAttribute('height', '1.8');
+                    evIcon.setAttribute('transparent', 'true');
+                    this.el.appendChild(evIcon);
+                } else if (s.type === 'accessible') {
+                    const accIcon = document.createElement('a-image');
+                    accIcon.setAttribute('src', TextureGen.createAccessibleLogoCanvas());
+                    accIcon.setAttribute('position', '0 0.03 0.2');
+                    accIcon.setAttribute('rotation', '-90 0 0');
+                    accIcon.setAttribute('width', '1.8');
+                    accIcon.setAttribute('height', '1.8');
+                    accIcon.setAttribute('transparent', 'true');
+                    this.el.appendChild(accIcon);
+                }
+
+                // 5. Overhead Sensor & Indicator Light Pod
+                this.sensorGantry = document.createElement('a-entity');
+                this.sensorGantry.setAttribute('position', '0 3.8 0');
+
+                // Sensor Casing
+                const sensorPod = document.createElement('a-cylinder');
+                sensorPod.setAttribute('radius', '0.22');
+                sensorPod.setAttribute('height', '0.35');
+                sensorPod.setAttribute('material', 'color: #1e293b; metalness: 0.7; roughness: 0.3');
+                this.sensorGantry.appendChild(sensorPod);
+
+                // Overhead Status LED Sphere
+                this.statusLed = document.createElement('a-sphere');
+                this.statusLed.setAttribute('position', '0 -0.2 0');
+                this.statusLed.setAttribute('radius', '0.14');
+                this.statusLed.setAttribute('material', 'color: #00ff88; emissive: #00ff88; emissiveIntensity: 1.0');
+                this.sensorGantry.appendChild(this.statusLed);
+
+                // Overhead ID Tag
+                this.overheadTag = document.createElement('a-text');
+                this.overheadTag.setAttribute('value', s.id);
+                this.overheadTag.setAttribute('position', '0 0.45 0');
+                this.overheadTag.setAttribute('align', 'center');
+                this.overheadTag.setAttribute('width', '5');
+                this.overheadTag.setAttribute('color', '#ffffff');
+                this.overheadTag.setAttribute('side', 'double');
+                this.sensorGantry.appendChild(this.overheadTag);
+
+                this.el.appendChild(this.sensorGantry);
+
+                // 6. Target Waypoint Beacon (Visible when navigating)
+                this.navBeacon = document.createElement('a-entity');
+                this.navBeacon.setAttribute('position', '0 1.8 0');
+                this.navBeacon.setAttribute('visible', 'false');
+
+                const beam = document.createElement('a-cylinder');
+                beam.setAttribute('height', '3.6');
+                beam.setAttribute('radius', '0.04');
+                beam.setAttribute('material', 'color: #00f3ff; emissive: #00f3ff; emissiveIntensity: 0.9; opacity: 0.6; transparent: true');
+                this.navBeacon.appendChild(beam);
+
+                const ring = document.createElement('a-ring');
+                ring.setAttribute('position', '0 -1.78 0');
+                ring.setAttribute('rotation', '-90 0 0');
+                ring.setAttribute('radius-inner', '0.8');
+                ring.setAttribute('radius-outer', '1.1');
+                ring.setAttribute('material', 'color: #00f3ff; emissive: #00f3ff; emissiveIntensity: 1.0; side: double');
+                this.navBeacon.appendChild(ring);
+
+                const navTag = document.createElement('a-text');
+                navTag.setAttribute('value', `TARGET: ${s.id}`);
+                navTag.setAttribute('position', '0 1.2 0');
+                navTag.setAttribute('align', 'center');
+                navTag.setAttribute('width', '6');
+                navTag.setAttribute('color', '#00f3ff');
+                navTag.setAttribute('side', 'double');
+                this.navBeacon.appendChild(navTag);
+
+                this.el.appendChild(this.navBeacon);
+
+                // 7. Interactive Click Trigger Box
+                this.clickZone = document.createElement('a-box');
+                this.clickZone.classList.add('raycastable');
+                this.clickZone.setAttribute('position', '0 1.2 0');
+                this.clickZone.setAttribute('width', '3.2');
+                this.clickZone.setAttribute('height', '2.4');
+                this.clickZone.setAttribute('depth', '5.2');
+                this.clickZone.setAttribute('material', 'opacity: 0.0; transparent: true');
+                this.clickZone.addEventListener('click', () => {
+                    SmartInspector.openForSpace(this.space.id);
+                });
+                this.el.appendChild(this.clickZone);
+
+                // 8. Vehicle Container
+                this.vehicleContainer = document.createElement('a-entity');
+                this.vehicleContainer.setAttribute('position', '0 0 0');
+                this.el.appendChild(this.vehicleContainer);
+            },
+            updateBayVisuals() {
+                const s = this.space;
+                let ledColor = '#00ff88'; // Available (Green)
+
+                if (s.status === 'occupied') {
+                    ledColor = '#ff2a5f'; // Occupied (Red)
+                } else if (s.status === 'reserved') {
+                    ledColor = '#ffb700'; // Reserved (Yellow)
+                } else if (s.type === 'ev') {
+                    ledColor = '#00f3ff'; // EV Available (Cyan)
+                } else if (s.type === 'accessible') {
+                    ledColor = '#38bdf8'; // Accessible (Blue)
+                }
+
+                if (this.statusLed) {
+                    this.statusLed.setAttribute('material', {
+                        color: ledColor,
+                        emissive: ledColor,
+                        emissiveIntensity: 0.95
+                    });
+                }
+
+                // Render or Remove Vehicle Model
+                this.vehicleContainer.innerHTML = '';
+                if (s.status === 'occupied') {
+                    const car = VehicleBuilder.createVehicle(s.vehicleType || 'sedan', s.vehicleColor || '#38bdf8');
+                    this.vehicleContainer.appendChild(car);
+                }
+            },
+            onSpaceChanged(e) {
+                if (e.detail.space.id === this.data.spaceId) {
+                    this.space = e.detail.space;
+                    this.updateBayVisuals();
+                }
+            },
+            onNavTarget(e) {
+                const isTarget = e.detail.targetId === this.data.spaceId;
+                if (this.navBeacon) {
+                    this.navBeacon.setAttribute('visible', isTarget);
+                }
+            },
+            remove() {
+                window.removeEventListener('smartpark-space-changed', this.onSpaceChanged);
+                window.removeEventListener('smartpark-nav-target', this.onNavTarget);
+            }
+        });
+
+        // EV Supercharging Station Component
+        AFRAME.registerComponent('ev-charger', {
+            schema: {
+                spaceId: { type: 'string' }
+            },
+            init() {
+                const space = ParkingData.getSpace(this.data.spaceId);
+                if (!space) return;
+
+                this.space = space;
+                this.createChargerUnit();
+
+                this.onSpaceChanged = this.onSpaceChanged.bind(this);
+                window.addEventListener('smartpark-space-changed', this.onSpaceChanged);
+            },
+            createChargerUnit() {
+                const s = this.space;
+                // Position adjacent to the parking bay curb
+                this.el.setAttribute('position', `${s.x} 0 ${s.z - 2.8}`);
+                this.el.setAttribute('rotation', '0 0 0');
+
+                // Main Sleek Charger Pillar
+                const pillar = document.createElement('a-box');
+                pillar.setAttribute('position', '0 1.2 0');
+                pillar.setAttribute('width', '0.7');
+                pillar.setAttribute('height', '2.4');
+                pillar.setAttribute('depth', '0.5');
+                pillar.setAttribute('material', 'color: #0f172a; metalness: 0.8; roughness: 0.2');
+                this.el.appendChild(pillar);
+
+                // LED Side Accent Strips
+                const leftLed = document.createElement('a-box');
+                leftLed.setAttribute('position', '-0.36 1.2 0');
+                leftLed.setAttribute('width', '0.04');
+                leftLed.setAttribute('height', '2.2');
+                leftLed.setAttribute('depth', '0.48');
+                leftLed.setAttribute('material', 'color: #00f3ff; emissive: #00f3ff; emissiveIntensity: 0.8');
+                this.el.appendChild(leftLed);
+
+                const rightLed = document.createElement('a-box');
+                rightLed.setAttribute('position', '0.36 1.2 0');
+                rightLed.setAttribute('width', '0.04');
+                rightLed.setAttribute('height', '2.2');
+                rightLed.setAttribute('depth', '0.48');
+                rightLed.setAttribute('material', 'color: #00f3ff; emissive: #00f3ff; emissiveIntensity: 0.8');
+                this.el.appendChild(rightLed);
+
+                // Charger Touchscreen LCD Display
+                this.screen = document.createElement('a-plane');
+                this.screen.setAttribute('position', '0 1.5 0.26');
+                this.screen.setAttribute('width', '0.55');
+                this.screen.setAttribute('height', '0.45');
+                this.screen.setAttribute('material', 'color: #030712; metalness: 0.5; roughness: 0.5');
+                this.el.appendChild(this.screen);
+
+                this.screenText = document.createElement('a-text');
+                this.screenText.setAttribute('position', '0 1.5 0.27');
+                this.screenText.setAttribute('align', 'center');
+                this.screenText.setAttribute('width', '2.2');
+                this.screenText.setAttribute('color', '#00f3ff');
+                this.screenText.setAttribute('value', `${s.id}\n${s.power || 150} kW FAST\nAVAILABLE`);
+                this.el.appendChild(this.screenText);
+
+                // Charging Cable & Holster
+                const holster = document.createElement('a-box');
+                holster.setAttribute('position', '0.38 0.9 0');
+                holster.setAttribute('width', '0.12');
+                holster.setAttribute('height', '0.4');
+                holster.setAttribute('depth', '0.2');
+                holster.setAttribute('material', 'color: #1e293b');
+                this.el.appendChild(holster);
+
+                // Interactive Click on Charger
+                pillar.classList.add('raycastable');
+                pillar.addEventListener('click', () => {
+                    SmartInspector.openForSpace(this.space.id);
+                    SmartAudio.playCharge();
+                });
+            },
+            updateStatus() {
+                const s = this.space;
+                if (!this.screenText) return;
+
+                if (s.status === 'occupied' && s.isCharging) {
+                    this.screenText.setAttribute('value', `${s.id} CHARGING\n${s.power || 150} kW\nBATTERY: ${s.batterySoc || 75}%`);
+                    this.screenText.setAttribute('color', '#00ff88');
+                } else if (s.status === 'occupied') {
+                    this.screenText.setAttribute('value', `${s.id}\nCONNECTED\nSTANDBY`);
+                    this.screenText.setAttribute('color', '#ffb700');
+                } else {
+                    this.screenText.setAttribute('value', `${s.id}\n${s.power || 150} kW FAST\nAVAILABLE`);
+                    this.screenText.setAttribute('color', '#00f3ff');
+                }
+            },
+            onSpaceChanged(e) {
+                if (e.detail.space.id === this.data.spaceId) {
+                    this.space = e.detail.space;
+                    this.updateStatus();
+                }
+            }
+        });
+
+        // Procedural 3D Vehicle Models (Lightweight, low-draw-call, high-polish for Meta Quest 3S)
+        const VehicleBuilder = {
+            createVehicle(type = 'sedan', color = '#38bdf8') {
+                const car = document.createElement('a-entity');
+                car.setAttribute('position', '0 0.1 0');
+
+                // 1. Lower Chassis
+                const body = document.createElement('a-box');
+                body.setAttribute('position', '0 0.45 0');
+                body.setAttribute('width', '2.0');
+                body.setAttribute('height', '0.5');
+                body.setAttribute('depth', '4.4');
+                body.setAttribute('material', `color: ${color}; roughness: 0.2; metalness: 0.7`);
+                car.appendChild(body);
+
+                // 2. Cabin / Glass Canopy
+                const cabin = document.createElement('a-box');
+                cabin.setAttribute('position', '0 0.95 -0.2');
+                cabin.setAttribute('width', '1.75');
+                cabin.setAttribute('height', '0.55');
+                cabin.setAttribute('depth', '2.3');
+                cabin.setAttribute('material', 'color: #0b1329; roughness: 0.1; metalness: 0.9; opacity: 0.9');
+                car.appendChild(cabin);
+
+                // 3. Headlights (Glowing)
+                const hl1 = document.createElement('a-box');
+                hl1.setAttribute('position', '-0.7 0.45 2.21');
+                hl1.setAttribute('width', '0.45');
+                hl1.setAttribute('height', '0.15');
+                hl1.setAttribute('depth', '0.05');
+                hl1.setAttribute('material', 'color: #ffffff; emissive: #ffffff; emissiveIntensity: 0.8');
+                car.appendChild(hl1);
+
+                const hl2 = document.createElement('a-box');
+                hl2.setAttribute('position', '0.7 0.45 2.21');
+                hl2.setAttribute('width', '0.45');
+                hl2.setAttribute('height', '0.15');
+                hl2.setAttribute('depth', '0.05');
+                hl2.setAttribute('material', 'color: #ffffff; emissive: #ffffff; emissiveIntensity: 0.8');
+                car.appendChild(hl2);
+
+                // 4. Taillights (Red LED Strip)
+                const tl = document.createElement('a-box');
+                tl.setAttribute('position', '0 0.48 -2.21');
+                tl.setAttribute('width', '1.8');
+                tl.setAttribute('height', '0.12');
+                tl.setAttribute('depth', '0.05');
+                tl.setAttribute('material', 'color: #ff2a5f; emissive: #ff2a5f; emissiveIntensity: 0.9');
+                car.appendChild(tl);
+
+                // 5. Four Wheels with Rims
+                const wheelPositions = [
+                    { x: -1.02, z: 1.3 },
+                    { x: 1.02, z: 1.3 },
+                    { x: -1.02, z: -1.3 },
+                    { x: 1.02, z: -1.3 }
+                ];
+
+                wheelPositions.forEach(p => {
+                    const wheel = document.createElement('a-cylinder');
+                    wheel.setAttribute('position', `${p.x} 0.28 ${p.z}`);
+                    wheel.setAttribute('rotation', '0 0 90');
+                    wheel.setAttribute('radius', '0.34');
+                    wheel.setAttribute('height', '0.24');
+                    wheel.setAttribute('material', 'color: #0f172a; roughness: 0.8');
+
+                    const rim = document.createElement('a-cylinder');
+                    rim.setAttribute('position', `0 ${p.x > 0 ? 0.01 : -0.01} 0`);
+                    rim.setAttribute('radius', '0.2');
+                    rim.setAttribute('height', '0.25');
+                    rim.setAttribute('material', 'color: #94a3b8; metalness: 0.9; roughness: 0.2');
+                    wheel.appendChild(rim);
+
+                    car.appendChild(wheel);
+                });
+
+                return car;
+            }
+        };
+
+        // Futuristic Holographic 3D Parking Management Dashboard Component
+        AFRAME.registerComponent('dashboard-ui', {
+            init() {
+                this.createDashboardStructure();
+                this.updateMetrics();
+
+                this.onStatsUpdated = this.onStatsUpdated.bind(this);
+                window.addEventListener('smartpark-stats-updated', this.onStatsUpdated);
+            },
+            createDashboardStructure() {
+                // Curved or Glassmorphic Console Backing
+                const mainPanel = document.createElement('a-box');
+                mainPanel.setAttribute('position', '0 2.2 0');
+                mainPanel.setAttribute('width', '5.2');
+                mainPanel.setAttribute('height', '2.8');
+                mainPanel.setAttribute('depth', '0.15');
+                mainPanel.setAttribute('material', 'color: #070d1e; roughness: 0.3; metalness: 0.7; opacity: 0.95');
+                this.el.appendChild(mainPanel);
+
+                // Neon Cyber Border Frame
+                const frame = document.createElement('a-entity');
+                // Top border
+                const tb = document.createElement('a-box');
+                tb.setAttribute('position', '0 3.62 0.08');
+                tb.setAttribute('width', '5.25');
+                tb.setAttribute('height', '0.06');
+                tb.setAttribute('depth', '0.04');
+                tb.setAttribute('material', 'color: #00f3ff; emissive: #00f3ff; emissiveIntensity: 0.9');
+                frame.appendChild(tb);
+                this.el.appendChild(frame);
+
+                // Title
+                const title = document.createElement('a-text');
+                title.setAttribute('position', '0 3.2 0.1');
+                title.setAttribute('align', 'center');
+                title.setAttribute('width', '8');
+                title.setAttribute('color', '#00f3ff');
+                title.setAttribute('value', '⚡ SMARTPARK FACILITY OVERVIEW');
+                this.el.appendChild(title);
+
+                // Metrics Text Area
+                this.metricsText = document.createElement('a-text');
+                this.metricsText.setAttribute('position', '-2.2 2.3 0.1');
+                this.metricsText.setAttribute('width', '6.5');
+                this.metricsText.setAttribute('line-height', '60');
+                this.metricsText.setAttribute('color', '#f8fafc');
+                this.metricsText.setAttribute('value', 'Loading facility telemetry...');
+                this.el.appendChild(this.metricsText);
+
+                // Interactive 3D Buttons on Dashboard
+                this.createButton('-1.4 1.2 0.15', '🧭 NEAREST SPOT', '#00f3ff', () => {
+                    ParkingData.findNearestAvailable(false, false);
+                });
+
+                this.createButton('0 1.2 0.15', '🔌 EV FAST CHARGER', '#00ff88', () => {
+                    ParkingData.findNearestAvailable(true, false);
+                });
+
+                this.createButton('1.4 1.2 0.15', '♿ ACCESSIBLE BAY', '#38bdf8', () => {
+                    ParkingData.findNearestAvailable(false, true);
+                });
+
+                // Bottom Stand
+                const stand = document.createElement('a-cylinder');
+                stand.setAttribute('position', '0 0.4 0');
+                stand.setAttribute('radius', '0.15');
+                stand.setAttribute('height', '1.4');
+                stand.setAttribute('material', 'color: #1e293b; metalness: 0.8');
+                this.el.appendChild(stand);
+            },
+            createButton(pos, label, color, onClick) {
+                const btn = document.createElement('a-entity');
+                btn.setAttribute('position', pos);
+
+                const bg = document.createElement('a-box');
+                bg.classList.add('raycastable');
+                bg.setAttribute('width', '1.25');
+                bg.setAttribute('height', '0.42');
+                bg.setAttribute('depth', '0.08');
+                bg.setAttribute('material', `color: #0f172a; roughness: 0.4; metalness: 0.6`);
+                bg.setAttribute('smart-interactive', `hoverColor: ${color}; sound: success`);
+                bg.addEventListener('click', onClick);
+                btn.appendChild(bg);
+
+                const txt = document.createElement('a-text');
+                txt.setAttribute('position', '0 0 0.05');
+                txt.setAttribute('align', 'center');
+                txt.setAttribute('width', '3.5');
+                txt.setAttribute('color', color);
+                txt.setAttribute('value', label);
+                btn.appendChild(txt);
+
+                this.el.appendChild(btn);
+            },
+            updateMetrics() {
+                if (!this.metricsText) return;
+                const s = ParkingData.getStats();
+
+                const text = `TOTAL CAPACITY:     ${s.total} SPACES\n` +
+                             `AVAILABLE BAYS:     ${s.available} (GREEN)\n` +
+                             `OCCUPIED:          ${s.occupied} (RED)\n` +
+                             `RESERVED:          ${s.reserved} (AMBER)\n` +
+                             `EV SUPERCHARGING:  ${s.evCharging}/${s.evTotal} ACTIVE (CYAN)\n` +
+                             `FACILITY LOAD:     ${s.occupancyPct}% OCCUPANCY`;
+
+                this.metricsText.setAttribute('value', text);
+            },
+            onStatsUpdated(e) {
+                this.updateMetrics();
+            }
+        });
+
+        // Dynamic 3D Navigation Path & Glowing Chevrons Component
+        AFRAME.registerComponent('guidance-system', {
+            init() {
+                this.pathContainer = document.createElement('a-entity');
+                this.el.appendChild(this.pathContainer);
+
+                this.onNavTarget = this.onNavTarget.bind(this);
+                window.addEventListener('smartpark-nav-target', this.onNavTarget);
+            },
+            onNavTarget(e) {
+                const targetId = e.detail.targetId;
+                this.pathContainer.innerHTML = '';
+                if (!targetId) return;
+
+                const space = ParkingData.getSpace(targetId);
+                if (!space) return;
+
+                // Build a high-tech illuminated waypoint path from entrance (0, 0, -20) to destination
+                const start = { x: 0, z: -18 };
+                const waypoints = [];
+
+                // Intermediate road turning point
+                const midZ = space.z > 0 ? 0 : -8;
+                waypoints.push(start);
+                waypoints.push({ x: 0, z: space.z });
+                waypoints.push({ x: space.x, z: space.z });
+
+                // Spawn sequence of glowing chevrons along path
+                let current = { ...start };
+                const numSteps = 16;
+
+                for (let i = 0; i <= numSteps; i++) {
+                    const t = i / numSteps;
+                    // Interpolate between start -> corner -> end
+                    let px, pz;
+                    if (t < 0.5) {
+                        const localT = t * 2;
+                        px = 0;
+                        pz = start.z + (space.z - start.z) * localT;
+                    } else {
+                        const localT = (t - 0.5) * 2;
+                        px = (space.x) * localT;
+                        pz = space.z;
+                    }
+
+                    const marker = document.createElement('a-plane');
+                    marker.setAttribute('position', `${px} 0.04 ${pz}`);
+                    marker.setAttribute('rotation', '-90 0 0');
+                    marker.setAttribute('width', '0.6');
+                    marker.setAttribute('height', '0.6');
+                    marker.setAttribute('src', TextureGen.createArrowCanvas());
+                    marker.setAttribute('transparent', 'true');
+                    marker.setAttribute('material', 'color: #00f3ff; emissive: #00f3ff; emissiveIntensity: 0.9');
+
+                    // Orient arrow towards destination
+                    const angle = Math.atan2(space.x - px, space.z - pz) * (180 / Math.PI);
+                    marker.setAttribute('rotation', `-90 ${angle} 0`);
+
+                    this.pathContainer.appendChild(marker);
+                }
+            }
+        });
+
+        // Entrance Gate & Exit Barrier System with vehicle detection animation
+        AFRAME.registerComponent('gate-barrier', {
+            schema: {
+                isEntry: { type: 'boolean', default: true }
+            },
+            init() {
+                this.isOpen = false;
+                this.createGateStructure();
+
+                this.openGate = this.openGate.bind(this);
+                this.closeGate = this.closeGate.bind(this);
+            },
+            createGateStructure() {
+                // Post Pillar
+                const post = document.createElement('a-box');
+                post.setAttribute('position', '0 0.7 0');
+                post.setAttribute('width', '0.4');
+                post.setAttribute('height', '1.4');
+                post.setAttribute('depth', '0.4');
+                post.setAttribute('material', 'color: #1e293b; metalness: 0.8');
+                this.el.appendChild(post);
+
+                // Rotating Barrier Arm Pivot
+                this.pivot = document.createElement('a-entity');
+                this.pivot.setAttribute('position', '0 1.2 0');
+
+                // Barrier Arm Pole
+                this.arm = document.createElement('a-cylinder');
+                this.arm.setAttribute('position', '1.7 0 0');
+                this.arm.setAttribute('rotation', '0 0 90');
+                this.arm.setAttribute('radius', '0.06');
+                this.arm.setAttribute('height', '3.4');
+                this.arm.setAttribute('material', 'color: #ef4444; roughness: 0.3');
+
+                // Red/White warning stripes
+                const stripe = document.createElement('a-cylinder');
+                stripe.setAttribute('position', '0 0 0');
+                stripe.setAttribute('radius', '0.065');
+                stripe.setAttribute('height', '1.2');
+                stripe.setAttribute('material', 'color: #ffffff; roughness: 0.3');
+                this.arm.appendChild(stripe);
+
+                this.pivot.appendChild(this.arm);
+                this.el.appendChild(this.pivot);
+
+                // Overhead Digital Marquee
+                const marquee = document.createElement('a-box');
+                marquee.setAttribute('position', '1.7 2.8 0');
+                marquee.setAttribute('width', '3.8');
+                marquee.setAttribute('height', '0.8');
+                marquee.setAttribute('depth', '0.2');
+                marquee.setAttribute('material', 'color: #030712; metalness: 0.8');
+                this.el.appendChild(marquee);
+
+                this.marqueeText = document.createElement('a-text');
+                this.marqueeText.setAttribute('position', '1.7 2.8 0.12');
+                this.marqueeText.setAttribute('align', 'center');
+                this.marqueeText.setAttribute('width', '5');
+                this.marqueeText.setAttribute('color', '#00ff88');
+                this.marqueeText.setAttribute('value', this.data.isEntry ? 'SMARTPARK ENTRY\nSPACES AVAILABLE' : 'THANK YOU\nSAFE TRAVELS');
+                this.el.appendChild(this.marqueeText);
+
+                // Detection trigger button
+                post.classList.add('raycastable');
+                post.setAttribute('smart-interactive', 'hoverColor: #00ff88; sound: select');
+                post.addEventListener('click', () => {
+                    this.triggerGateSequence();
+                });
+            },
+            triggerGateSequence() {
+                if (this.isOpen) return;
+                this.openGate();
+                setTimeout(() => this.closeGate(), 4000);
+            },
+            openGate() {
+                this.isOpen = true;
+                this.pivot.setAttribute('animation', {
+                    property: 'rotation',
+                    to: '0 0 75',
+                    dur: 800,
+                    easing: 'easeOutQuad'
+                });
+                SmartAudio.playGate();
+            },
+            closeGate() {
+                this.isOpen = false;
+                this.pivot.setAttribute('animation', {
+                    property: 'rotation',
+                    to: '0 0 0',
+                    dur: 800,
+                    easing: 'easeInQuad'
+                });
+                SmartAudio.playGate();
+            }
+        });
+
+        // AI CCTV Camera with scanning laser & surveillance feed telemetry
+        AFRAME.registerComponent('smart-cctv', {
+            schema: {
+                camId: { type: 'string', default: 'CAM-01' }
+            },
+            init() {
+                // Mounting bracket
+                const base = document.createElement('a-cylinder');
+                base.setAttribute('radius', '0.12');
+                base.setAttribute('height', '0.2');
+                base.setAttribute('rotation', '90 0 0');
+                base.setAttribute('material', 'color: #334155');
+                this.el.appendChild(base);
+
+                // Camera Body
+                this.camHead = document.createElement('a-box');
+                this.camHead.setAttribute('position', '0 0 0.25');
+                this.camHead.setAttribute('width', '0.25');
+                this.camHead.setAttribute('height', '0.2');
+                this.camHead.setAttribute('depth', '0.45');
+                this.camHead.setAttribute('material', 'color: #0f172a; metalness: 0.8');
+
+                // Camera Lens
+                const lens = document.createElement('a-cylinder');
+                lens.setAttribute('position', '0 0 0.23');
+                lens.setAttribute('rotation', '90 0 0');
+                lens.setAttribute('radius', '0.07');
+                lens.setAttribute('height', '0.08');
+                lens.setAttribute('material', 'color: #00f3ff; emissive: #00f3ff; emissiveIntensity: 0.9');
+                this.camHead.appendChild(lens);
+
+                this.el.appendChild(this.camHead);
+
+                // Subtle sweeping rotation animation
+                this.el.setAttribute('animation', {
+                    property: 'rotation',
+                    to: '20 40 0',
+                    from: '20 -40 0',
+                    dir: 'alternate',
+                    loop: true,
+                    dur: 6000,
+                    easing: 'easeInOutSine'
+                });
+            }
+        });
+    </script>
+
+    <!-- In-VR Floating Space Details Inspector (Follows player or appears when clicking bays) -->
+    <script>
+        const SmartInspector = {
+            currentSpaceId: null,
+            inspectorEl: null,
+
+            init() {
+                this.inspectorEl = document.querySelector('#vr-space-inspector');
+            },
+
+            openForSpace(spaceId) {
+                this.currentSpaceId = spaceId;
+                const space = ParkingData.getSpace(spaceId);
+                if (!space || !this.inspectorEl) return;
+
+                // Position floating panel comfortably in front of the space / player
+                const s = space;
+                this.inspectorEl.setAttribute('position', `${s.x} 2.0 ${s.z + (s.z > 0 ? -3.0 : 3.0)}`);
+                this.inspectorEl.setAttribute('rotation', `0 ${s.z > 0 ? 180 : 0} 0`);
+                this.inspectorEl.setAttribute('visible', 'true');
+
+                this.updateContent();
+                SmartAudio.playSelect();
+            },
+
+            updateContent() {
+                const space = ParkingData.getSpace(this.currentSpaceId);
+                if (!space || !this.inspectorEl) return;
+
+                const titleEl = this.inspectorEl.querySelector('.insp-title');
+                const detailsEl = this.inspectorEl.querySelector('.insp-details');
+                const actionBtnTxt = this.inspectorEl.querySelector('.insp-action-text');
+
+                if (titleEl) titleEl.setAttribute('value', `SPACE ${space.id} [${space.zone}]`);
+                if (detailsEl) {
+                    let desc = `TYPE:   ${space.type.toUpperCase()}\nSTATUS: ${space.status.toUpperCase()}\n`;
+                    if (space.type === 'ev') {
+                        desc += `POWER:  ${space.power || 150} kW FAST\n`;
+                        if (space.status === 'occupied') desc += `SOC:    ${space.batterySoc || 80}% CHARGING\n`;
+                    }
+                    detailsEl.setAttribute('value', desc);
+                }
+
+                if (actionBtnTxt) {
+                    if (space.status === 'available') actionBtnTxt.setAttribute('value', '🔒 RESERVE');
+                    else if (space.status === 'reserved') actionBtnTxt.setAttribute('value', '🔓 UNRESERVE');
+                    else actionBtnTxt.setAttribute('value', '🚗 TOGGLE CAR');
+                }
+            },
+
+            handlePrimaryAction() {
+                if (!this.currentSpaceId) return;
+                const space = ParkingData.getSpace(this.currentSpaceId);
+                if (!space) return;
+
+                if (space.status === 'available' || space.status === 'reserved') {
+                    ParkingData.toggleReserve(this.currentSpaceId);
+                } else {
+                    ParkingData.toggleOccupancy(this.currentSpaceId);
+                }
+                this.updateContent();
+            },
+
+            handleNavigate() {
+                if (this.currentSpaceId) {
+                    ParkingData.setNavigationTarget(this.currentSpaceId);
+                    SmartAudio.playSuccess();
+                }
+            },
+
+            close() {
+                if (this.inspectorEl) this.inspectorEl.setAttribute('visible', 'false');
+                SmartAudio.playSelect();
+            }
+        };
+    </script>
+
+    <!-- A-Frame VR Scene -->
+    <a-scene 
+        renderer="antialias: true; colorManagement: true; highRefreshRate: true; foveationLevel: 2;"
+        shadow="type: pcfsoft"
+        background="color: #030712">
+
+        <!-- Asset Management (Inline Procedural Canvas Textures) -->
+        <a-assets>
+            <!-- Preloaded dynamically generated textures -->
+        </a-assets>
+
+        <!-- Ambient & Directional Lighting (Optimized for Quest 3S standalone frame rate) -->
+        <a-entity light="type: ambient; color: #334155; intensity: 1.4"></a-entity>
+        <a-entity light="type: directional; color: #93c5fd; intensity: 1.2; castShadow: false" position="15 30 10"></a-entity>
+        <!-- Futuristic neon cyan & violet ambient accent lights -->
+        <a-entity light="type: point; color: #00f3ff; intensity: 1.5; distance: 25" position="0 6 -10"></a-entity>
+        <a-entity light="type: point; color: #a855f7; intensity: 1.2; distance: 25" position="0 6 10"></a-entity>
+
+        <!-- Atmospheric Sky & Cyber City Skyline Backdrop -->
+        <a-sky color="#030712"></a-sky>
+        
+        <!-- Distant Futuristic High-Rise Silhouette Blocks -->
+        <a-entity id="city-backdrop" position="0 0 -60">
+            <a-box position="-35 25 0" width="12" height="50" depth="12" material="color: #060b18; roughness: 0.9"></a-box>
+            <a-box position="-18 35 0" width="14" height="70" depth="14" material="color: #091226; roughness: 0.9"></a-box>
+            <a-box position="0 45 0" width="18" height="90" depth="18" material="color: #050a14; roughness: 0.9"></a-box>
+            <a-box position="20 30 0" width="15" height="60" depth="15" material="color: #081022; roughness: 0.9"></a-box>
+            <a-box position="38 20 0" width="12" height="40" depth="12" material="color: #040810; roughness: 0.9"></a-box>
+            <!-- Glowing Skyline Spire Beacons -->
+            <a-sphere position="0 91 0" radius="0.8" material="color: #ff2a5f; emissive: #ff2a5f; emissiveIntensity: 1"></a-sphere>
+            <a-sphere position="-18 71 0" radius="0.6" material="color: #00f3ff; emissive: #00f3ff; emissiveIntensity: 1"></a-sphere>
+            <a-sphere position="20 61 0" radius="0.6" material="color: #00ff88; emissive: #00ff88; emissiveIntensity: 1"></a-sphere>
+        </a-entity>
+
+        <!-- Parking Facility Main Ground Floor -->
+        <a-plane 
+            id="parking-ground" 
+            position="0 0 0" 
+            rotation="-90 0 0" 
+            width="60" 
+            height="50" 
+            material="color: #111827; roughness: 0.8; metalness: 0.1">
+        </a-plane>
+
+        <!-- Facility Modern Architectural Roof Trusses & Canopy -->
+        <a-entity id="roof-structure">
+            <!-- Steel Columns -->
+            <a-cylinder position="-16 3 -8" radius="0.25" height="6" material="color: #1e293b; metalness: 0.8"></a-cylinder>
+            <a-cylinder position="16 3 -8" radius="0.25" height="6" material="color: #1e293b; metalness: 0.8"></a-cylinder>
+            <a-cylinder position="-16 3 2" radius="0.25" height="6" material="color: #1e293b; metalness: 0.8"></a-cylinder>
+            <a-cylinder position="16 3 2" radius="0.25" height="6" material="color: #1e293b; metalness: 0.8"></a-cylinder>
+            <a-cylinder position="-16 3 12" radius="0.25" height="6" material="color: #1e293b; metalness: 0.8"></a-cylinder>
+            <a-cylinder position="16 3 12" radius="0.25" height="6" material="color: #1e293b; metalness: 0.8"></a-cylinder>
+
+            <!-- Overhead Canopy Beams & LED Strips -->
+            <a-box position="0 6 -8" width="34" height="0.3" depth="0.4" material="color: #334155; metalness: 0.7"></a-box>
+            <a-box position="0 6 2" width="34" height="0.3" depth="0.4" material="color: #334155; metalness: 0.7"></a-box>
+            <a-box position="0 6 12" width="34" height="0.3" depth="0.4" material="color: #334155; metalness: 0.7"></a-box>
+
+            <a-box position="0 5.9 -8" width="30" height="0.05" depth="0.1" material="color: #00f3ff; emissive: #00f3ff; emissiveIntensity: 0.7"></a-box>
+            <a-box position="0 5.9 2" width="30" height="0.05" depth="0.1" material="color: #00f3ff; emissive: #00f3ff; emissiveIntensity: 0.7"></a-box>
+            <a-box position="0 5.9 12" width="30" height="0.05" depth="0.1" material="color: #00f3ff; emissive: #00f3ff; emissiveIntensity: 0.7"></a-box>
+        </a-entity>
+
+        <!-- Pedestrian Zebra Crossing Walkways & Safety Curbs -->
+        <a-entity id="walkways">
+            <!-- Central Pedestrian Walkway -->
+            <a-plane position="0 0.02 -3" rotation="-90 0 0" width="3.5" height="1.8" material="color: #ffffff; opacity: 0.9"></a-plane>
+            <a-plane position="0 0.02 7" rotation="-90 0 0" width="3.5" height="1.8" material="color: #ffffff; opacity: 0.9"></a-plane>
+        </a-entity>
+
+        <!-- Security Kiosk & Surveillance Base Station -->
+        <a-entity id="security-hub" position="-22 0 -16">
+            <a-box position="0 1.6 0" width="3.2" height="3.2" depth="3.2" material="color: #0f172a; metalness: 0.6; roughness: 0.3"></a-box>
+            <!-- Glass Window -->
+            <a-plane position="0 1.8 1.61" width="2.4" height="1.4" material="color: #38bdf8; opacity: 0.4; transparent: true"></a-plane>
+            <!-- Security Label -->
+            <a-text value="AI SECURITY & TELEMETRY" position="0 3.0 1.62" align="center" width="4.5" color="#00f3ff"></a-text>
+            <!-- Roof Radar Dish -->
+            <a-cylinder position="0 3.6 0" radius="0.1" height="0.8" material="color: #334155"></a-cylinder>
+            <a-cylinder position="0 4.0 0" radius="0.6" height="0.1" rotation="45 0 0" material="color: #00f3ff; metalness: 0.9"></a-cylinder>
+        </a-entity>
+
+        <!-- Smart CCTV Cameras -->
+        <a-entity smart-cctv="camId: CAM-01" position="-16 5.5 -18" rotation="20 45 0"></a-entity>
+        <a-entity smart-cctv="camId: CAM-02" position="16 5.5 -18" rotation="20 -45 0"></a-entity>
+        <a-entity smart-cctv="camId: CAM-03" position="22 5.5 14" rotation="20 -120 0"></a-entity>
+
+        <!-- Parking Entrance Gate & Exit Barrier System -->
+        <a-entity id="entry-gate" gate-barrier="isEntry: true" position="-4 0 -18"></a-entity>
+        <a-entity id="exit-gate" gate-barrier="isEntry: false" position="4 0 -18"></a-entity>
+
+        <!-- Central Futuristic Holographic Management Dashboard -->
+        <a-entity id="main-dashboard" dashboard-ui position="0 0 -14"></a-entity>
+
+        <!-- Dynamic Parking Guidance Waypoint System -->
+        <a-entity id="guidance-system-manager" guidance-system></a-entity>
+
+        <!-- Parking Bays (Generated & Managed via JavaScript) -->
+        <a-entity id="parking-bays-container">
+            <!-- Zone A (Standard North) -->
+            <a-entity parking-bay="spaceId: A01"></a-entity>
+            <a-entity parking-bay="spaceId: A02"></a-entity>
+            <a-entity parking-bay="spaceId: A03"></a-entity>
+            <a-entity parking-bay="spaceId: A04"></a-entity>
+            <a-entity parking-bay="spaceId: A05"></a-entity>
+            <a-entity parking-bay="spaceId: A06"></a-entity>
+            <a-entity parking-bay="spaceId: A07"></a-entity>
+            <a-entity parking-bay="spaceId: A08"></a-entity>
+
+            <!-- Zone B (Standard + Accessible Center) -->
+            <a-entity parking-bay="spaceId: B01"></a-entity>
+            <a-entity parking-bay="spaceId: B02"></a-entity>
+            <a-entity parking-bay="spaceId: B03"></a-entity>
+            <a-entity parking-bay="spaceId: B04"></a-entity>
+            <a-entity parking-bay="spaceId: B05"></a-entity>
+            <a-entity parking-bay="spaceId: B06"></a-entity>
+            <a-entity parking-bay="spaceId: ACC01"></a-entity>
+            <a-entity parking-bay="spaceId: ACC02"></a-entity>
+
+            <!-- Zone C (Standard + Reserved South) -->
+            <a-entity parking-bay="spaceId: C01"></a-entity>
+            <a-entity parking-bay="spaceId: C02"></a-entity>
+            <a-entity parking-bay="spaceId: C03"></a-entity>
+            <a-entity parking-bay="spaceId: C04"></a-entity>
+            <a-entity parking-bay="spaceId: C05"></a-entity>
+            <a-entity parking-bay="spaceId: C06"></a-entity>
+            <a-entity parking-bay="spaceId: RES01"></a-entity>
+            <a-entity parking-bay="spaceId: RES02"></a-entity>
+
+            <!-- Zone EV (High-Power Fast Charging Wing) -->
+            <a-entity parking-bay="spaceId: EV01"></a-entity>
+            <a-entity parking-bay="spaceId: EV02"></a-entity>
+            <a-entity parking-bay="spaceId: EV03"></a-entity>
+            <a-entity parking-bay="spaceId: EV04"></a-entity>
+
+            <!-- EV Charging Pillars -->
+            <a-entity ev-charger="spaceId: EV01"></a-entity>
+            <a-entity ev-charger="spaceId: EV02"></a-entity>
+            <a-entity ev-charger="spaceId: EV03"></a-entity>
+            <a-entity ev-charger="spaceId: EV04"></a-entity>
+        </a-entity>
+
+        <!-- In-VR Floating Space Details Inspector Modal -->
+        <a-entity id="vr-space-inspector" position="0 2 -10" visible="false">
+            <a-box position="0 0 0" width="2.4" height="2.0" depth="0.08" material="color: #070d1e; metalness: 0.7; roughness: 0.2; opacity: 0.95"></a-box>
+            <!-- Border Glow -->
+            <a-box position="0 1.02 0.04" width="2.42" height="0.04" depth="0.02" material="color: #00f3ff; emissive: #00f3ff; emissiveIntensity: 0.8"></a-box>
+            
+            <a-text class="insp-title" value="SPACE INSPECTOR" position="0 0.75 0.06" align="center" width="4.0" color="#00f3ff"></a-text>
+            <a-text class="insp-details" value="Telemetry loading..." position="-1.0 0.3 0.06" width="3.2" color="#e2e8f0" line-height="55"></a-text>
+
+            <!-- Action Button 1: Toggle State / Reserve -->
+            <a-entity position="-0.55 -0.6 0.06">
+                <a-box class="raycastable" width="0.95" height="0.32" depth="0.06" material="color: #1e293b" smart-interactive="hoverColor: #00ff88; sound: select" onclick="SmartInspector.handlePrimaryAction()"></a-box>
+                <a-text class="insp-action-text" value="ACTION" position="0 0 0.04" align="center" width="2.8" color="#00ff88"></a-text>
+            </a-entity>
+
+            <!-- Action Button 2: Navigate / Guide -->
+            <a-entity position="0.55 -0.6 0.06">
+                <a-box class="raycastable" width="0.95" height="0.32" depth="0.06" material="color: #1e293b" smart-interactive="hoverColor: #00f3ff; sound: success" onclick="SmartInspector.handleNavigate()"></a-box>
+                <a-text value="🧭 GUIDE" position="0 0 0.04" align="center" width="2.8" color="#00f3ff"></a-text>
+            </a-entity>
+
+            <!-- Close Button (X) -->
+            <a-entity position="1.0 0.85 0.06">
+                <a-circle class="raycastable" radius="0.12" material="color: #ff2a5f; emissive: #ff2a5f; emissiveIntensity: 0.5" onclick="SmartInspector.close()"></a-circle>
+                <a-text value="✕" position="0 0 0.02" align="center" width="3" color="#ffffff"></a-text>
+            </a-entity>
+        </a-entity>
+
+        <!-- Initial In-VR Welcome Tutorial Card (Floating in front of user on launch) -->
+        <a-entity id="vr-welcome-card" position="0 1.6 -2.4">
+            <a-box width="2.8" height="2.1" depth="0.06" material="color: #030712; opacity: 0.95; metalness: 0.8"></a-box>
+            <a-box position="0 1.07 0.03" width="2.82" height="0.04" depth="0.02" material="color: #00f3ff; emissive: #00f3ff; emissiveIntensity: 1"></a-box>
+            <a-text value="⚡ SMARTPARK VR" position="0 0.75 0.05" align="center" width="6" color="#00f3ff"></a-text>
+            <a-text value="Autonomous Smart Parking Simulation\nDesigned for Meta Quest 3S WebXR" position="0 0.45 0.05" align="center" width="3.2" color="#94a3b8"></a-text>
+            
+            <a-text value="• Left Stick: Locomotion / Walk\n• Right Stick: Snap Turning\n• Trigger: Point & Interact with Bays\n• Inspect sensors, EV chargers & telemetry" position="-1.2 0.0 0.05" width="2.8" color="#f1f5f9" line-height="55"></a-text>
+
+            <!-- Enter / Dismiss Button -->
+            <a-entity position="0 -0.68 0.05">
+                <a-box class="raycastable" width="1.6" height="0.38" depth="0.05" material="color: #00f3ff; emissive: #00f3ff; emissiveIntensity: 0.3" smart-interactive="hoverColor: #00ff88; sound: success" onclick="document.querySelector('#vr-welcome-card').setAttribute('visible', 'false'); SmartAudio.playSuccess();"></a-box>
+                <a-text value="ENTER FACILITY" position="0 0 0.04" align="center" width="3.8" color="#030712"></a-text>
+            </a-entity>
+        </a-entity>
+
+        <!-- Player Rig: Optimized for Meta Quest 3S and Desktop -->
+        <a-entity id="player-rig" position="0 0 -21" quest-controller-movement="speed: 0.12; snapAngle: 45">
+            <!-- Head & Camera -->
+            <a-camera id="head-cam" position="0 1.6 0" look-controls="pointerLockEnabled: false" wasd-controls="acceleration: 25">
+                <!-- Cursor for Desktop Raycasting & Interaction -->
+                <a-cursor 
+                    id="mouse-cursor" 
+                    raycaster="objects: .raycastable; far: 25" 
+                    fuse="false" 
+                    material="color: #00f3ff; shader: flat" 
+                    position="0 0 -1" 
+                    geometry="primitive: ring; radiusInner: 0.007; radiusOuter: 0.012">
+                </a-cursor>
+            </a-camera>
+
+            <!-- Meta Quest 3S Left Hand Controller (Laser + Locomotion) -->
+            <a-entity 
+                id="left-hand" 
+                oculus-touch-controls="hand: left" 
+                laser-controls="hand: left" 
+                raycaster="objects: .raycastable; far: 25; lineColor: #00f3ff; lineOpacity: 0.7">
+            </a-entity>
+
+            <!-- Meta Quest 3S Right Hand Controller (Laser + Turning + Interaction) -->
+            <a-entity 
+                id="right-hand" 
+                oculus-touch-controls="hand: right" 
+                laser-controls="hand: right" 
+                raycaster="objects: .raycastable; far: 25; lineColor: #00ff88; lineOpacity: 0.7">
+            </a-entity>
+        </a-entity>
+
+    </a-scene>
+
+    <!-- UI Event Wiring & Initialization -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize inspector
+            SmartInspector.init();
+
+            // Initial UI Stats update
+            ParkingData.updateAllUI();
+
+            // Desktop HUD Button Listeners
+            const btnNearest = document.getElementById('btn-find-nearest');
+            const btnEV = document.getElementById('btn-find-ev');
+            const btnTraffic = document.getElementById('btn-sim-traffic');
+            const btnSpawnCar = document.getElementById('btn-spawn-car');
+
+            if (btnNearest) {
+                btnNearest.addEventListener('click', () => {
+                    ParkingData.findNearestAvailable(false, false);
+                });
+            }
+
+            if (btnEV) {
+                btnEV.addEventListener('click', () => {
+                    ParkingData.findNearestAvailable(true, false);
+                });
+            }
+
+            if (btnTraffic) {
+                btnTraffic.addEventListener('click', () => {
+                    ParkingData.toggleTrafficSimulation();
+                });
+            }
+
+            if (btnSpawnCar) {
+                btnSpawnCar.addEventListener('click', () => {
+                    const gate = document.querySelector('[gate-barrier]');
+                    if (gate && gate.components['gate-barrier']) {
+                        gate.components['gate-barrier'].triggerGateSequence();
+                    }
+                    ParkingData.findNearestAvailable(false, false);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
